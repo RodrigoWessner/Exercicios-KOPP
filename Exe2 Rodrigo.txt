@@ -1,0 +1,81 @@
+/*Rodrigo Nunes Wessner*/
+/*MYSQL*/
+
+CREATE TABLE IF NOT EXISTS `exe2`.`situacao`(
+	ID int,
+    situacao varchar(255),
+    PRIMARY KEY (ID)
+)ENGINE = InnoDB;
+
+CREATE TABLE  IF NOT EXISTS `exe2`.`Remessa` (
+	ID int NOT NULL,
+    total int,
+    situacaoID int,
+    PRIMARY KEY (ID),
+	FOREIGN KEY (situacaoID) REFERENCES situacao(ID)
+)ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS `exe2`.`infracoes`(
+    Numero int NOT NULL,
+    Data_Hora datetime,
+    Equipamento int,
+    VelocidadeP float,
+    VelocidadeM float,
+    validacao BIT,
+    remessa int,
+    PRIMARY KEY (Numero),
+    FOREIGN KEY (remessa) REFERENCES Remessa(ID)
+)ENGINE = InnoDB;
+
+INSERT INTO situacao VALUES (1, 'CRIADA');
+INSERT INTO situacao VALUES (2, 'EXPEDIDA');
+INSERT INTO situacao VALUES (3, 'ACEITA');
+INSERT INTO situacao VALUES (4, 'NÃO ACEITA');
+
+INSERT INTO Remessa (ID, situacaoID) VALUES (1,1);
+INSERT INTO Remessa (ID, situacaoID) VALUES (2,1);
+INSERT INTO Remessa (ID, situacaoID) VALUES (3,2);
+
+INSERT INTO infracoes VALUES (1, now(), 1, 85.0, 88.5, 1, 1);
+INSERT INTO infracoes VALUES (2, now(), 1, 5.0, 88.5, 1, 1);
+INSERT INTO infracoes VALUES (3, now(), 2, 15.0, 88.5, 1, 1);
+INSERT INTO infracoes VALUES (4, now(), 2, 115.0, 150.5, 1, 2);
+INSERT INTO infracoes VALUES (5, now(), 1, 85.0, 88.5, 1, 2);
+INSERT INTO infracoes VALUES (6, now(), 3, 95.0, 160.8, 1, 2);
+INSERT INTO infracoes VALUES (7, now(), 3, 58.0, 80.5, 0, 3);
+INSERT INTO infracoes VALUES (8, now(), 1, 98.0, 108.5, 0, 3);
+INSERT INTO infracoes VALUES (9, now(), 1, 77.0, 78.5, 1, 3);
+INSERT INTO infracoes VALUES (10, now(), 2, 58.0, 88.5, 0, 3);
+
+SET SQL_SAFE_UPDATES = 0;
+/*Atualizando campo TOTAL da remessa*/
+UPDATE Remessa R 
+INNER JOIN (SELECT remessa,COUNT(*) idcount FROM infracoes GROUP BY remessa) as I
+  ON I.remessa = R.ID 
+SET R.total = I.idcount;
+
+select * from infracoes;
+select * from Remessa;
+select * from situacao;
+
+/*1.Monte uma busca para criação de um relatório que apresente todas as infrações com velocidade
+medida igual ou acima de 20% da velocidade permitida. Ordenar a lista por data e hora da infração.*/
+select * from infracoes 
+	where VelocidadeM >= (VelocidadeP*1.2)
+    order by Data_Hora;
+/*2. Monte uma busca que para cada remessa apresente sua identificação, sua situação, o total de
+infrações, total de infrações válidas e total de infrações inválidas. Ordenar a consulta pela situação
+das remessas.*/
+select Remessa.ID, situacao.situacao, Remessa.total, 
+	(select count(*) from infracoes where validacao = 1 and Remessa.ID = infracoes.remessa) as Infracoes_Validas, 
+	(select count(*) from infracoes where validacao = 0 and Remessa.ID = infracoes.remessa) as Infracoes_Invalidas
+	from Remessa, situacao, infracoes
+	where Remessa.situacaoID = situacao.ID
+    and infracoes.remessa = Remessa.ID
+    and infracoes.validacao = 1
+    group by ID
+    order by situacao;
+
+DROP TABLE Remessa;
+DROP TABLE situacao;
+DROP TABLE infracoes
